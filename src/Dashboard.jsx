@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Github, Star, GitFork, Code, Activity, AlertCircle, CheckCircle, Moon, Sun, Clock, TrendingUp, Eye, Calendar, GitBranch, GitCommit, Users, ExternalLink } from 'lucide-react';
+import { Github, Star, GitFork, Code, Activity, AlertCircle, CheckCircle, Moon, Sun, Clock, TrendingUp, Eye, Calendar, GitBranch, GitCommit, Users, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 
 const Dashboard = ({ username = 'alxgraphy' }) => {
   const [darkMode, setDarkMode] = useState(false);
@@ -8,22 +8,15 @@ const Dashboard = ({ username = 'alxgraphy' }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [expandedProject, setExpandedProject] = useState(null);
 
-  // Get GitHub token from environment variable
   const githubToken = process.env.REACT_APP_GITHUB_TOKEN;
 
   const fetchGithubData = useCallback(async () => {
     try {
       setError(null);
-      
-      // Add authentication header if token is available
-      const headers = {
-        'Accept': 'application/vnd.github.v3+json'
-      };
-      
-      if (githubToken) {
-        headers['Authorization'] = `Bearer ${githubToken}`;
-      }
+      const headers = { 'Accept': 'application/vnd.github.v3+json' };
+      if (githubToken) { headers['Authorization'] = `Bearer ${githubToken}`; }
       
       const userResponse = await fetch(`https://api.github.com/users/${username}`, { headers });
       if (!userResponse.ok) throw new Error('Failed to fetch user data');
@@ -36,13 +29,11 @@ const Dashboard = ({ username = 'alxgraphy' }) => {
       if (!reposResponse.ok) throw new Error('Failed to fetch repos');
       const reposData = await reposResponse.json();
       
-      // Calculate total stats
       const totalStars = reposData.reduce((sum, repo) => sum + repo.stargazers_count, 0);
       const totalForks = reposData.reduce((sum, repo) => sum + repo.forks_count, 0);
       const totalWatchers = reposData.reduce((sum, repo) => sum + repo.watchers_count, 0);
       const totalIssues = reposData.reduce((sum, repo) => sum + repo.open_issues_count, 0);
       
-      // Language breakdown
       const allLanguages = {};
       reposData.forEach(repo => {
         if (repo.language) {
@@ -58,31 +49,31 @@ const Dashboard = ({ username = 'alxgraphy' }) => {
         }))
         .sort((a, b) => b.value - a.value);
       
-      // Commit activity simulation (would need GitHub GraphQL API for real data)
-      const commitChartData = Array.from({ length: 12 }, (_, i) => ({
-        week: `W${i + 1}`,
-        commits: Math.floor(Math.random() * 25) + 5
+      // REAL DATA: Mapping repo sizes for the bar chart instead of random commit numbers
+      const commitChartData = reposData.slice(0, 10).map(repo => ({
+        week: repo.name.substring(0, 8),
+        commits: repo.size // Using size as a real metric since commits require a separate API call per repo
       }));
       
-      // Stars over time simulation
-      const starsOverTime = Array.from({ length: 8 }, (_, i) => ({
-        month: new Date(Date.now() - (7 - i) * 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short' }),
-        stars: Math.floor(Math.random() * 10) + totalStars * (i / 8)
+      // REAL DATA: Mapping actual stars per repo
+      const starsOverTime = reposData.slice(0, 8).map(repo => ({
+        month: repo.name.substring(0, 8),
+        stars: repo.stargazers_count
       }));
       
-      // Activity breakdown
+      // REAL DATA: Activity based on real totals
       const activityData = [
-        { name: 'Commits', value: Math.floor(Math.random() * 200) + 100 },
-        { name: 'PRs', value: Math.floor(Math.random() * 50) + 20 },
-        { name: 'Issues', value: Math.floor(Math.random() * 30) + 10 },
-        { name: 'Reviews', value: Math.floor(Math.random() * 40) + 15 }
+        { name: 'Public Repos', value: userData.public_repos },
+        { name: 'Total Stars', value: totalStars },
+        { name: 'Forks', value: totalForks },
+        { name: 'Watchers', value: totalWatchers }
       ];
       
-      // Project health status
       const projectHealth = reposData.slice(0, 10).map(repo => ({
+        id: repo.id,
         name: repo.name,
         status: repo.open_issues_count === 0 ? 'healthy' : repo.open_issues_count < 5 ? 'warning' : 'attention',
-        uptime: (99 + Math.random()).toFixed(2),
+        uptime: "100", 
         lastCommit: new Date(repo.updated_at),
         stars: repo.stargazers_count,
         forks: repo.forks_count,
@@ -90,7 +81,9 @@ const Dashboard = ({ username = 'alxgraphy' }) => {
         size: repo.size,
         language: repo.language,
         description: repo.description,
-        url: repo.html_url
+        url: repo.html_url,
+        created: repo.created_at,
+        branch: repo.default_branch
       }));
       
       setGithubData({
@@ -113,111 +106,11 @@ const Dashboard = ({ username = 'alxgraphy' }) => {
     } catch (error) {
       console.error('Failed to fetch GitHub data:', error);
       setError(error.message);
-      
-      // Use mock data as fallback
-      setGithubData({
-        user: {
-          login: username,
-          name: 'Alexander Wondwossen',
-          public_repos: 4,
-          followers: 1,
-          following: 1,
-          avatar_url: `https://github.com/identicons/${username}.png`,
-          created_at: '2024-11-12T00:00:00Z'
-        },
-        repos: [
-          { 
-            name: 'photo-exif-previewer', 
-            stargazers_count: 0, 
-            forks_count: 0, 
-            watchers_count: 0,
-            open_issues_count: 0,
-            language: 'Python', 
-            updated_at: '2024-12-14T00:00:00Z', 
-            description: 'Simple Python script to extract and display EXIF data from photos',
-            size: 145,
-            html_url: `https://github.com/${username}/photo-exif-previewer`
-          },
-          { 
-            name: 'exif-dashboard-pro', 
-            stargazers_count: 0, 
-            forks_count: 0, 
-            watchers_count: 0,
-            open_issues_count: 0,
-            language: 'Python', 
-            updated_at: '2024-12-13T00:00:00Z', 
-            description: 'Advanced EXIF data dashboard',
-            size: 89,
-            html_url: `https://github.com/${username}/exif-dashboard-pro`
-          }
-        ],
-        totalStars: 0,
-        totalForks: 0,
-        totalWatchers: 0,
-        totalIssues: 0,
-        languageBreakdown: [
-          { name: 'Python', value: 2, percentage: '100' }
-        ],
-        commitChartData: Array.from({ length: 12 }, (_, i) => ({
-          week: `W${i + 1}`,
-          commits: Math.floor(Math.random() * 20) + 5
-        })),
-        starsOverTime: Array.from({ length: 8 }, (_, i) => ({
-          month: new Date(Date.now() - (7 - i) * 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short' }),
-          stars: i * 2
-        })),
-        activityData: [
-          { name: 'Commits', value: 145 },
-          { name: 'PRs', value: 32 },
-          { name: 'Issues', value: 18 },
-          { name: 'Reviews', value: 24 }
-        ],
-        projectHealth: [
-          {
-            name: 'photo-exif-previewer',
-            status: 'healthy',
-            uptime: '99.98',
-            lastCommit: new Date('2024-12-14T00:00:00Z'),
-            stars: 0,
-            forks: 0,
-            issues: 0,
-            size: 145,
-            language: 'Python',
-            description: 'Simple Python script to extract and display EXIF data from photos',
-            url: `https://github.com/${username}/photo-exif-previewer`
-          },
-          {
-            name: 'exif-dashboard-pro',
-            status: 'healthy',
-            uptime: '99.95',
-            lastCommit: new Date('2024-12-13T00:00:00Z'),
-            stars: 0,
-            forks: 0,
-            issues: 0,
-            size: 89,
-            language: 'Python',
-            description: 'Advanced EXIF data dashboard',
-            url: `https://github.com/${username}/exif-dashboard-pro`
-          }
-        ],
-        repoCount: 4
-      });
       setLoading(false);
     }
   }, [username, githubToken]);
 
-  // Initial fetch
-  useEffect(() => {
-    fetchGithubData();
-  }, [fetchGithubData]);
-
-  // Auto-refresh every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchGithubData();
-    }, 300000);
-    return () => clearInterval(interval);
-  }, [fetchGithubData]);
+  useEffect(() => { fetchGithubData(); }, [fetchGithubData]);
 
   const bgColor = darkMode ? 'bg-gray-900' : 'bg-white';
   const cardBg = darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200';
@@ -250,15 +143,14 @@ const Dashboard = ({ username = 'alxgraphy' }) => {
     }
   };
 
+  const toggleExpand = (idx) => {
+    setExpandedProject(expandedProject === idx ? null : idx);
+  };
+
   if (loading) {
     return (
       <div className={`min-h-screen ${bgColor} flex items-center justify-center transition-colors duration-300`}>
-        <div className="text-center">
-          <div className={`inline-flex items-center gap-3 ${darkMode ? 'bg-gray-800 text-white' : 'bg-black text-white'} px-8 py-6 rounded-3xl shadow-2xl`}>
-            <Activity className="w-6 h-6 animate-spin" />
-            <span className="text-xl font-semibold">Loading project data...</span>
-          </div>
-        </div>
+        <Activity className="w-6 h-6 animate-spin text-gray-500" />
       </div>
     );
   }
@@ -270,272 +162,128 @@ const Dashboard = ({ username = 'alxgraphy' }) => {
         <div className={`mb-8 ${headerBg} text-white border-2 rounded-3xl p-6 shadow-2xl`}>
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h1 className="text-4xl md:text-5xl font-black mb-2">
-                The Alx Dashboard
-              </h1>
-              <p className="text-gray-300 text-sm">Project Monitoring & Analytics Hub</p>
-              {error && (
-                <p className="text-yellow-400 text-xs mt-2 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4" />
-                  Using cached data - API unavailable
-                </p>
-              )}
-              {!githubToken && !error && (
-                <p className="text-blue-400 text-xs mt-2 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4" />
-                  Running without authentication - rate limits apply
-                </p>
-              )}
+              <h1 className="text-4xl md:text-5xl font-black mb-2">The Alx Dashboard</h1>
+              <p className="text-gray-300 text-sm">Real-time Project Analytics</p>
             </div>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setDarkMode(!darkMode)}
-                className={`${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-100'} ${darkMode ? 'text-white' : 'text-black'} p-3 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg`}
-                aria-label="Toggle dark mode"
+                className={`${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-black'} p-3 rounded-2xl shadow-lg`}
               >
                 {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
-              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white text-black'} px-4 py-2 rounded-2xl flex items-center gap-2 shadow-lg`}>
-                <div className={`w-2 h-2 ${error ? 'bg-yellow-400' : 'bg-green-400'} rounded-full animate-pulse`} />
-                <span className="text-sm font-semibold">{error ? 'Offline' : 'Live'}</span>
-              </div>
-              <div className="text-right hidden md:block">
-                <div className="text-xs text-gray-300">Last sync</div>
-                <div className="text-sm font-semibold">{lastUpdate.toLocaleTimeString()}</div>
-              </div>
             </div>
           </div>
         </div>
 
         {/* Stats Overview */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
-          <div className={`${cardBg} border-2 rounded-2xl p-6 shadow-lg transform hover:scale-105 transition-all`}>
-            <Code className={`w-8 h-8 ${textPrimary} mb-3`} />
-            <div className={`text-3xl font-black ${textPrimary} mb-1`}>{githubData?.repoCount || 0}</div>
-            <div className={`text-xs ${textTertiary}`}>Total Projects</div>
-          </div>
-          
-          <div className={`${cardBg} border-2 rounded-2xl p-6 shadow-lg transform hover:scale-105 transition-all`}>
-            <Star className={`w-8 h-8 ${textPrimary} mb-3`} />
-            <div className={`text-3xl font-black ${textPrimary} mb-1`}>{githubData?.totalStars || 0}</div>
-            <div className={`text-xs ${textTertiary}`}>Total Stars</div>
-          </div>
-          
-          <div className={`${cardBg} border-2 rounded-2xl p-6 shadow-lg transform hover:scale-105 transition-all`}>
-            <GitFork className={`w-8 h-8 ${textPrimary} mb-3`} />
-            <div className={`text-3xl font-black ${textPrimary} mb-1`}>{githubData?.totalForks || 0}</div>
-            <div className={`text-xs ${textTertiary}`}>Total Forks</div>
-          </div>
-          
-          <div className={`${cardBg} border-2 rounded-2xl p-6 shadow-lg transform hover:scale-105 transition-all`}>
-            <Eye className={`w-8 h-8 ${textPrimary} mb-3`} />
-            <div className={`text-3xl font-black ${textPrimary} mb-1`}>{githubData?.totalWatchers || 0}</div>
-            <div className={`text-xs ${textTertiary}`}>Watchers</div>
-          </div>
-          
-          <div className={`${cardBg} border-2 rounded-2xl p-6 shadow-lg transform hover:scale-105 transition-all`}>
-            <AlertCircle className={`w-8 h-8 ${textPrimary} mb-3`} />
-            <div className={`text-3xl font-black ${textPrimary} mb-1`}>{githubData?.totalIssues || 0}</div>
-            <div className={`text-xs ${textTertiary}`}>Open Issues</div>
-          </div>
-          
-          <div className={`${cardBg} border-2 rounded-2xl p-6 shadow-lg transform hover:scale-105 transition-all`}>
-            <Users className={`w-8 h-8 ${textPrimary} mb-3`} />
-            <div className={`text-3xl font-black ${textPrimary} mb-1`}>{githubData?.user?.followers || 0}</div>
-            <div className={`text-xs ${textTertiary}`}>Followers</div>
-          </div>
+          {[
+            { icon: <Code />, val: githubData?.repoCount, label: 'Projects' },
+            { icon: <Star />, val: githubData?.totalStars, label: 'Stars' },
+            { icon: <GitFork />, val: githubData?.totalForks, label: 'Forks' },
+            { icon: <Eye />, val: githubData?.totalWatchers, label: 'Watchers' },
+            { icon: <AlertCircle />, val: githubData?.totalIssues, label: 'Issues' },
+            { icon: <Users />, val: githubData?.user?.followers, label: 'Followers' },
+          ].map((stat, i) => (
+            <div key={i} className={`${cardBg} border-2 rounded-2xl p-6 shadow-lg`}>
+              <div className={`${textPrimary} mb-3`}>{stat.icon}</div>
+              <div className={`text-3xl font-black ${textPrimary} mb-1`}>{stat.val || 0}</div>
+              <div className={`text-xs ${textTertiary}`}>{stat.label}</div>
+            </div>
+          ))}
         </div>
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          
-          {/* Commit Activity */}
           <div className={`${cardBg} border-2 rounded-3xl p-6 shadow-xl`}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className={`text-lg font-bold ${textPrimary}`}>Commit Activity</h2>
-              <GitCommit className={`w-5 h-5 ${textSecondary}`} />
-            </div>
+            <h2 className={`text-lg font-bold ${textPrimary} mb-4`}>Repository Size (KB)</h2>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={githubData?.commitChartData}>
-                <XAxis dataKey="week" stroke={darkMode ? '#9ca3af' : '#6b7280'} style={{ fontSize: 12 }} />
-                <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} style={{ fontSize: 12 }} />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-                    border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                    borderRadius: '8px',
-                    color: darkMode ? '#ffffff' : '#000000'
-                  }}
-                />
-                <Bar dataKey="commits" fill={darkMode ? '#6b7280' : '#000000'} radius={[8, 8, 0, 0]} />
+                <XAxis dataKey="week" stroke={darkMode ? '#9ca3af' : '#6b7280'} fontSize={10} />
+                <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} fontSize={10} />
+                <Tooltip contentStyle={{ backgroundColor: darkMode ? '#1f2937' : '#fff', color: darkMode ? '#fff' : '#000' }} />
+                <Bar dataKey="commits" fill={darkMode ? '#9ca3af' : '#000'} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Stars Over Time */}
           <div className={`${cardBg} border-2 rounded-3xl p-6 shadow-xl`}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className={`text-lg font-bold ${textPrimary}`}>Stars Growth</h2>
-              <TrendingUp className={`w-5 h-5 ${textSecondary}`} />
-            </div>
+            <h2 className={`text-lg font-bold ${textPrimary} mb-4`}>Star Distribution</h2>
             <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={githubData?.starsOverTime}>
-                <defs>
-                  <linearGradient id="starGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={darkMode ? '#6b7280' : '#000000'} stopOpacity={0.3} />
-                    <stop offset="100%" stopColor={darkMode ? '#6b7280' : '#000000'} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="month" stroke={darkMode ? '#9ca3af' : '#6b7280'} style={{ fontSize: 12 }} />
-                <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} style={{ fontSize: 12 }} />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-                    border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                    borderRadius: '8px',
-                    color: darkMode ? '#ffffff' : '#000000'
-                  }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="stars" 
-                  stroke={darkMode ? '#9ca3af' : '#000000'} 
-                  strokeWidth={2}
-                  fill="url(#starGradient)" 
-                />
+                <XAxis dataKey="month" stroke={darkMode ? '#9ca3af' : '#6b7280'} fontSize={10} />
+                <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} fontSize={10} />
+                <Tooltip />
+                <Area type="monotone" dataKey="stars" stroke={darkMode ? '#fff' : '#000'} fill={darkMode ? '#4b5563' : '#e5e5e5'} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Activity Breakdown */}
           <div className={`${cardBg} border-2 rounded-3xl p-6 shadow-xl`}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className={`text-lg font-bold ${textPrimary}`}>Activity Breakdown</h2>
-              <Activity className={`w-5 h-5 ${textSecondary}`} />
-            </div>
-            <div className="h-[200px] flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={githubData?.activityData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={4}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {githubData?.activityData?.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-                      border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '8px'
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* Language Breakdown */}
-        <div className={`${cardBg} border-2 rounded-3xl p-6 shadow-xl mb-6`}>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className={`text-xl font-bold ${textPrimary}`}>Language Distribution</h2>
-            <Code className={`w-6 h-6 ${textSecondary}`} />
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {githubData?.languageBreakdown?.map((lang, idx) => (
-              <div key={idx} className={`${accentBg} rounded-2xl p-4 border ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-                <div className={`text-2xl font-black ${textPrimary} mb-1`}>{lang.value}</div>
-                <div className={`text-sm ${textSecondary} mb-2`}>{lang.name}</div>
-                <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                  <div 
-                    className={`${darkMode ? 'bg-gray-400' : 'bg-black'} h-2 rounded-full`}
-                    style={{ width: `${lang.percentage}%` }}
-                  ></div>
-                </div>
-                <div className={`text-xs ${textTertiary} mt-1`}>{lang.percentage}%</div>
-              </div>
-            ))}
+            <h2 className={`text-lg font-bold ${textPrimary} mb-4`}>User Activity</h2>
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={githubData?.activityData} innerRadius={50} outerRadius={80} dataKey="value">
+                  {githubData?.activityData?.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
         {/* Project Health Status */}
         <div className={`${cardBg} border-2 rounded-3xl p-6 shadow-xl`}>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className={`text-xl font-bold ${textPrimary}`}>Project Health Monitor</h2>
-            <CheckCircle className={`w-6 h-6 text-green-500`} />
-          </div>
-          
+          <h2 className={`text-xl font-bold ${textPrimary} mb-6`}>Project Health Monitor (Click for Info)</h2>
           <div className="space-y-4">
             {githubData?.projectHealth?.map((project, idx) => (
               <div 
                 key={idx} 
-                className={`${accentBg} border ${darkMode ? 'border-gray-600' : 'border-gray-200'} rounded-2xl p-6 ${hoverBg} transition-all duration-300`}
+                onClick={() => toggleExpand(idx)}
+                className={`${accentBg} border ${darkMode ? 'border-gray-600' : 'border-gray-200'} rounded-2xl p-6 ${hoverBg} transition-all cursor-pointer`}
               >
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <a 
-                        href={project.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`text-xl font-bold ${textPrimary} hover:underline flex items-center gap-2`}
-                      >
-                        {project.name}
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
+                      <span className={`text-xl font-bold ${textPrimary}`}>{project.name}</span>
                       {getStatusIcon(project.status)}
                     </div>
-                    {project.description && (
-                      <p className={`text-sm ${textSecondary} mb-3`}>{project.description}</p>
-                    )}
+                    {project.description && <p className={`text-sm ${textSecondary} mb-3`}>{project.description}</p>}
                   </div>
+                  {expandedProject === idx ? <ChevronUp className={textTertiary} /> : <ChevronDown className={textTertiary} />}
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                  <div>
-                    <div className={`text-xs ${textTertiary} mb-1`}>Uptime</div>
-                    <div className={`text-lg font-bold text-green-500`}>{project.uptime}%</div>
-                  </div>
-                  <div>
-                    <div className={`text-xs ${textTertiary} mb-1`}>Last Commit</div>
-                    <div className={`text-lg font-bold ${textPrimary}`}>
-                      {Math.floor((Date.now() - project.lastCommit) / (1000 * 60 * 60 * 24))}d ago
+                {/* MORE INFO TOGGLE SECTION */}
+                {expandedProject === idx && (
+                  <div className={`mt-4 pt-4 border-t ${darkMode ? 'border-gray-600' : 'border-gray-200'} grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-300`}>
+                    <div className={`text-sm ${textSecondary}`}>
+                      <p><strong>Repo ID:</strong> {project.id}</p>
+                      <p><strong>Default Branch:</strong> {project.branch}</p>
+                    </div>
+                    <div className={`text-sm ${textSecondary}`}>
+                      <p><strong>Created:</strong> {new Date(project.created).toLocaleDateString()}</p>
+                      <p><a href={project.url} target="_blank" rel="noreferrer" className="text-blue-500 flex items-center gap-1 mt-1">View on GitHub <ExternalLink className="w-3 h-3" /></a></p>
                     </div>
                   </div>
-                  <div>
-                    <div className={`text-xs ${textTertiary} mb-1`}>Stars</div>
-                    <div className={`text-lg font-bold ${textPrimary}`}>{project.stars}</div>
-                  </div>
-                  <div>
-                    <div className={`text-xs ${textTertiary} mb-1`}>Issues</div>
-                    <div className={`text-lg font-bold ${project.issues > 0 ? 'text-yellow-500' : 'text-green-500'}`}>
-                      {project.issues}
-                    </div>
-                  </div>
-                </div>
+                )}
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className={`px-3 py-1 ${darkMode ? 'bg-gray-600' : 'bg-black'} text-white rounded-full font-semibold`}>
-                      {project.language || 'Unknown'}
-                    </span>
-                    <span className={`flex items-center gap-1 ${textSecondary}`}>
-                      <GitFork className="w-4 h-4" /> {project.forks}
-                    </span>
-                    <span className={`${textTertiary} text-xs`}>
-                      {(project.size / 1024).toFixed(1)} MB
-                    </span>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                  <div>
+                    <div className={`text-xs ${textTertiary}`}>Last Commit</div>
+                    <div className={`font-bold ${textPrimary}`}>{Math.floor((Date.now() - project.lastCommit) / (1000 * 60 * 60 * 24))}d ago</div>
                   </div>
-                  <div className={`text-xs ${getStatusColor(project.status)} font-semibold uppercase`}>
-                    {project.status}
+                  <div>
+                    <div className={`text-xs ${textTertiary}`}>Language</div>
+                    <div className={`font-bold ${textPrimary}`}>{project.language || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div className={`text-xs ${textTertiary}`}>Stars</div>
+                    <div className={`font-bold ${textPrimary}`}>{project.stars}</div>
+                  </div>
+                  <div>
+                    <div className={`text-xs ${textTertiary}`}>Size</div>
+                    <div className={`font-bold ${textPrimary}`}>{(project.size / 1024).toFixed(2)} MB</div>
                   </div>
                 </div>
               </div>
@@ -543,9 +291,8 @@ const Dashboard = ({ username = 'alxgraphy' }) => {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className={`mt-8 text-center ${textTertiary} text-sm`}>
-          <p>Monitoring {githubData?.repoCount || 0} projects • Last updated {lastUpdate.toLocaleString()}</p>
+        <div className={`mt-8 text-center ${textTertiary} text-sm pb-8`}>
+          <p>Monitoring {githubData?.repoCount || 0} real projects • Last updated {lastUpdate.toLocaleTimeString()}</p>
         </div>
       </div>
     </div>
